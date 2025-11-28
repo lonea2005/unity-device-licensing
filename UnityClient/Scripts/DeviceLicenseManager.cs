@@ -142,7 +142,8 @@ namespace DeviceLicensing
                 string combined = deviceCode + "License_Password_Salt_2024";
                 byte[] hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(combined));
                 
-                // 取後8個字節作為密碼
+                // 取第8-15個字節作為密碼 (索引8到15)
+                // Take bytes at indices 8-15 as password
                 StringBuilder sb = new StringBuilder();
                 for (int i = 8; i < 16; i++)
                 {
@@ -179,7 +180,15 @@ namespace DeviceLicensing
                 
                 if (!string.IsNullOrEmpty(decrypted))
                 {
-                    IsLicensed = ValidateLicense(decrypted);
+                    // 直接驗證密碼，不觸發保存和事件
+                    // Directly validate password without triggering save and events
+                    string expectedPassword = GenerateExpectedPassword(DeviceCode);
+                    IsLicensed = decrypted.Trim().ToUpper() == expectedPassword.ToUpper();
+                    
+                    if (IsLicensed)
+                    {
+                        Debug.Log("[DeviceLicense] 已從保存的授權恢復。License restored from saved data.");
+                    }
                 }
             }
         }
@@ -198,13 +207,24 @@ namespace DeviceLicensing
         }
         
         /// <summary>
+        /// 獲取加密用的密鑰
+        /// Get encryption key
+        /// </summary>
+        private byte[] GetEncryptionKey()
+        {
+            string deviceId = GetDeviceIdentifier();
+            string keyStr = deviceId.Substring(0, Math.Min(16, deviceId.Length)).PadRight(16, 'X');
+            return Encoding.UTF8.GetBytes(keyStr);
+        }
+        
+        /// <summary>
         /// 簡單的字符串加密
         /// Simple string encryption
         /// </summary>
         private string EncryptString(string text)
         {
             byte[] textBytes = Encoding.UTF8.GetBytes(text);
-            byte[] keyBytes = Encoding.UTF8.GetBytes(GetDeviceIdentifier().Substring(0, Math.Min(16, GetDeviceIdentifier().Length)).PadRight(16, 'X'));
+            byte[] keyBytes = GetEncryptionKey();
             
             for (int i = 0; i < textBytes.Length; i++)
             {
@@ -223,7 +243,7 @@ namespace DeviceLicensing
             try
             {
                 byte[] encryptedBytes = Convert.FromBase64String(encrypted);
-                byte[] keyBytes = Encoding.UTF8.GetBytes(GetDeviceIdentifier().Substring(0, Math.Min(16, GetDeviceIdentifier().Length)).PadRight(16, 'X'));
+                byte[] keyBytes = GetEncryptionKey();
                 
                 for (int i = 0; i < encryptedBytes.Length; i++)
                 {

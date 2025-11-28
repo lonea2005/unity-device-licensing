@@ -33,7 +33,8 @@ def generate_license_password(device_code: str) -> str:
     combined = device_code + "License_Password_Salt_2024"
     hash_bytes = hashlib.sha256(combined.encode('utf-8')).digest()
     
-    # 取第8-15字節作為密碼（與客戶端一致）
+    # 取索引8到15的字節作為密碼（與客戶端一致）
+    # Take bytes at indices 8-15 as password (consistent with client)
     password_hex = ''.join(f'{b:02X}' for b in hash_bytes[8:16])
     
     # 格式化為 XXXX-XXXX-XXXX-XXXX 格式
